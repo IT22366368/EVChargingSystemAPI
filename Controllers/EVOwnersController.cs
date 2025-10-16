@@ -78,25 +78,6 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
-        //[HttpPut]
-        //[Route("deactivate")]
-        //[EVOwnerOnly]
-        //[OwnAccountMiddleware]
-        //public IHttpActionResult DeactivateAccount()
-        //{
-        //    var currentUserId = UserContextHelper.GetCurrentUserId(this);
-        //    if (string.IsNullOrEmpty(currentUserId))
-        //        return Unauthorized();
-
-        //    var result = _evOwnerService.DeactivateAccount(currentUserId);
-
-        //    if (!result.IsSuccess)
-        //    {
-        //        return GetErrorResponse(result.Status, result.Message);
-        //    }
-
-        //    return Ok(result.Message);
-        //}
 
         /// <summary>
         /// Reactivates a deactivated EV owner account by NIC.
@@ -237,6 +218,71 @@ namespace SparkPoint_Server.Controllers
         }
 
 
+        /// <summary>
+        /// Admin creates a new EV owner account.
+        /// Route: POST /api/evowners/admin/create
+        /// Access: Admin Only
+        /// </summary>
+        [HttpPost]
+        [Route("admin/create")]
+        [AdminOnly]
+        public IHttpActionResult AdminCreateEVOwner(EVOwnerRegisterModel model)
+        {
+            var result = _evOwnerService.Register(model); // Reuse existing Register method!
+
+            if (!result.IsSuccess)
+            {
+                return GetErrorResponse(result.Status, result.Message);
+            }
+
+            return Ok(result.Message);
+        }
+
+        /// <summary>
+        /// Admin updates any EV owner profile by NIC.
+        /// Route: PUT /api/evowners/admin/update/{nic}
+        /// Access: Admin Only
+        /// </summary>
+        [HttpPut]
+        [Route("admin/update/{nic}")]
+        [AdminOnly]
+        public IHttpActionResult AdminUpdateEVOwner(string nic, EVOwnerUpdateModel model)
+        {
+            var result = _evOwnerService.AdminUpdateEVOwnerByNIC(nic, model);
+
+            if (!result.IsSuccess)
+            {
+                return GetErrorResponse(result.Status, result.Message);
+            }
+
+            return Ok(result.Message);
+        }
+
+        /// <summary>
+        /// Admin deactivates any EV owner account by NIC.
+        /// Route: PUT /api/evowners/admin/deactivate/{nic}
+        /// Access: Admin Only
+        /// </summary>
+        [HttpPut]
+        [Route("admin/deactivate/{nic}")]
+        [AdminOnly]
+        public IHttpActionResult AdminDeactivateEVOwner(string nic)
+        {
+            var evOwner = _evOwnerService.GetEVOwnerByNIC(nic);
+            if (evOwner == null)
+            {
+                return BadRequest("EV Owner not found.");
+            }
+
+            var result = _evOwnerService.DeactivateAccount(evOwner.UserId);
+
+            if (!result.IsSuccess)
+            {
+                return GetErrorResponse(result.Status, result.Message);
+            }
+
+            return Ok(result.Message);
+        }
 
         private IHttpActionResult GetErrorResponse(EVOwnerOperationStatus status, string errorMessage)
         {
