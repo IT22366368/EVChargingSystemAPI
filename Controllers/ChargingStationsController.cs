@@ -1,11 +1,13 @@
-﻿using System;
-using System.Web.Http;
-using SparkPoint_Server.Models;
-using SparkPoint_Server.Services;
-using SparkPoint_Server.Attributes;
+﻿using SparkPoint_Server.Attributes;
 using SparkPoint_Server.Constants;
 using SparkPoint_Server.Enums;
+using SparkPoint_Server.Models;
+using SparkPoint_Server.Services;
 using SparkPoint_Server.Utils;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web.Http;
 
 namespace SparkPoint_Server.Controllers
 {
@@ -25,7 +27,7 @@ namespace SparkPoint_Server.Controllers
         public IHttpActionResult CreateStation(StationCreateModel model)
         {
             var result = _chargingStationService.CreateStation(model);
-            
+
             if (!result.IsSuccess)
             {
                 return GetErrorResponse(result.Status, result.Message);
@@ -39,7 +41,7 @@ namespace SparkPoint_Server.Controllers
         public IHttpActionResult GetStations([FromUri] StationFilterModel filter = null)
         {
             var result = _chargingStationService.GetStations(filter);
-            
+
             if (!result.IsSuccess)
             {
                 return BadRequest(result.ErrorMessage);
@@ -54,14 +56,14 @@ namespace SparkPoint_Server.Controllers
         public IHttpActionResult GetStation(string stationId)
         {
             var result = _chargingStationService.GetStation(stationId);
-            
+
             if (!result.IsSuccess)
             {
                 return BadRequest(result.ErrorMessage);
             }
 
             var response = ChargingStationUtils.CreateDetailedStationResponse(result.Station, null);
-            // Replace null with actual station users from result
+         
             var responseWithUsers = new
             {
                 Station = result.Station,
@@ -77,7 +79,7 @@ namespace SparkPoint_Server.Controllers
         public IHttpActionResult UpdateStation(string stationId, StationUpdateModel model)
         {
             var result = _chargingStationService.UpdateStation(stationId, model);
-            
+
             if (!result.IsSuccess)
             {
                 return GetErrorResponse(result.Status, result.Message);
@@ -92,7 +94,7 @@ namespace SparkPoint_Server.Controllers
         public IHttpActionResult ActivateStation(string stationId)
         {
             var result = _chargingStationService.ActivateStation(stationId);
-            
+
             if (!result.IsSuccess)
             {
                 return GetErrorResponse(result.Status, result.Message);
@@ -107,7 +109,7 @@ namespace SparkPoint_Server.Controllers
         public IHttpActionResult DeactivateStation(string stationId)
         {
             var result = _chargingStationService.DeactivateStation(stationId);
-            
+
             if (!result.IsSuccess)
             {
                 return GetErrorResponse(result.Status, result.Message);
@@ -122,7 +124,7 @@ namespace SparkPoint_Server.Controllers
         public IHttpActionResult GetStationStatistics(string stationId)
         {
             var statistics = _chargingStationService.GetStationStatistics(stationId);
-            
+
             if (statistics == null)
             {
                 return BadRequest(ChargingStationConstants.StationNotFound);
@@ -138,6 +140,36 @@ namespace SparkPoint_Server.Controllers
             var types = ChargingStationUtils.GetValidStationTypes();
             return Ok(types);
         }
+
+        [HttpGet]
+        [Route("nearby")]
+        public IHttpActionResult GetNearbyStations([FromUri] double latitude, [FromUri] double longitude, [FromUri] double radiusKm = 5)
+        {
+            try
+            {
+                var nearbyStations = _chargingStationService.GetNearbyStations(latitude, longitude, radiusKm);
+
+                if (nearbyStations == null || !nearbyStations.Any())
+                    return Ok(new List<object>()); 
+
+                return Ok(nearbyStations.Select(s => new {
+                    Id = s.Id,
+                    Name = s.StationName,
+                    Location = new { Latitude = s.Latitude, Longitude = s.Longitude },
+                    AvailableSlots = s.AvailableSlots,
+                    TotalSlots = s.TotalSlots,
+                    Type = s.Type,
+                    Address = s.Address,
+                    City = s.City,
+                    StateProvince = s.StateProvince
+                }));
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError(ex);
+            }
+        }
+
 
         private IHttpActionResult GetErrorResponse(StationOperationStatus status, string errorMessage)
         {

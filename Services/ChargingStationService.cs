@@ -99,7 +99,7 @@ namespace SparkPoint_Server.Services
                 var stationUsers = _usersCollection.Find(stationUsersFilter).ToList();
 
                 var userProfiles = stationUsers.Select(ChargingStationUtils.CreateStationUserProfile).ToList();
-                
+
                 return StationRetrievalResult.Success(station, userProfiles);
             }
             catch (Exception ex)
@@ -186,7 +186,7 @@ namespace SparkPoint_Server.Services
                 // Check for active bookings
                 var activeBookingsFilter = ChargingStationFilterHelper.BuildActiveBookingsFilter(stationId);
                 var activeBookingsCount = _bookingsCollection.CountDocuments(activeBookingsFilter);
-                
+
                 if (activeBookingsCount > 0)
                 {
                     return StationOperationResult.Failed(
@@ -212,7 +212,7 @@ namespace SparkPoint_Server.Services
             {
                 var filterDefinition = ChargingStationFilterHelper.BuildStationFilter(filter);
                 var sortDefinition = ChargingStationFilterHelper.BuildStationSort(sortField, sortOrder);
-                
+
                 var stations = _stationsCollection
                     .Find(filterDefinition)
                     .Sort(sortDefinition)
@@ -231,10 +231,10 @@ namespace SparkPoint_Server.Services
             try
             {
                 var filterDefinition = ChargingStationFilterHelper.BuildStationFilter(filter);
-                
+
                 var totalCount = _stationsCollection.CountDocuments(filterDefinition);
                 var skip = (pageNumber - 1) * pageSize;
-                
+
                 var stations = _stationsCollection
                     .Find(filterDefinition)
                     .Skip(skip)
@@ -279,11 +279,11 @@ namespace SparkPoint_Server.Services
                     return null;
 
                 var totalBookings = _bookingsCollection.CountDocuments(b => b.StationId == stationId);
-                var activeBookings = _bookingsCollection.CountDocuments(b => 
-                    b.StationId == stationId && 
+                var activeBookings = _bookingsCollection.CountDocuments(b =>
+                    b.StationId == stationId &&
                     BookingStatusConstants.IsSlotReservingStatus(b.Status));
 
-                var utilization = station.TotalSlots > 0 
+                var utilization = station.TotalSlots > 0
                     ? (double)(station.TotalSlots - station.AvailableSlots) / station.TotalSlots * 100
                     : 0;
 
@@ -303,5 +303,38 @@ namespace SparkPoint_Server.Services
                 return null;
             }
         }
+
+        public List<ChargingStation> GetNearbyStations(double latitude, double longitude, double radiusKm = 5)
+        {
+            try
+            {
+                var stations = _stationsCollection.Find(_ => true).ToList(); // get all active stations
+                return stations
+                    .Where(s => s.IsActive &&
+                                GetDistanceKm(latitude, longitude, (double)s.Latitude, (double)s.Longitude) <= radiusKm)
+                    .ToList();
+            }
+            catch
+            {
+                return new List<ChargingStation>();
+            }
+        }
+
+        // Helper: Haversine formula to calculate distance between two coordinates
+        private double GetDistanceKm(double lat1, double lon1, double lat2, double lon2)
+        {
+            var R = 6371; // Radius of the earth in km
+            var dLat = ToRadians(lat2 - lat1);
+            var dLon = ToRadians(lon2 - lon1);
+            var a =
+                Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c; // Distance in km
+        }
+
+        private double ToRadians(double deg) => deg * (Math.PI / 180);
+
     }
 }
