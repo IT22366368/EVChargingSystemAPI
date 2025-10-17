@@ -36,7 +36,6 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("")]
-        [AdminOnly]
         public IHttpActionResult GetStations([FromUri] StationFilterModel filter = null)
         {
             var result = _chargingStationService.GetStations(filter);
